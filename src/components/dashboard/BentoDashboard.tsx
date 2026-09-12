@@ -11,15 +11,13 @@ import {
   Clock,
   ChevronRight,
   Plus,
-  CalendarPlus,
-  Download,
-  Trash2,
-  ExternalLink
+  ExternalLink,
+  Download
 } from 'lucide-react'
 import { db } from '../../db'
 import { generateGoogleCalendarUrl, downloadICSFile } from '../../utils/calendar'
 import TodoModal from '../todo/TodoModal'
-import { pushLocalData, deleteTodoFromCloud } from '../../services/syncService'
+import { pushLocalData } from '../../services/syncService'
 import type { NavTab } from '../layout/MobileShell'
 
 interface BentoDashboardProps {
@@ -29,16 +27,13 @@ interface BentoDashboardProps {
 export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalScope, setModalScope] = useState<'daily' | 'weekly' | 'monthly'>('daily')
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('daily')
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
-
-  const categories = ['Semua', 'Pekerjaan', 'Pribadi', 'Kesehatan', 'Belajar', 'Finansial']
 
   // Live queries from Dexie.js
   const allTodos = useLiveQuery(() => db.todos.reverse().sortBy('createdAt'), []) || []
   const dailyTodos = allTodos.filter((t) => t.scope === 'daily')
   const weeklyTodos = allTodos.filter((t) => t.scope === 'weekly')
   const monthlyTodos = allTodos.filter((t) => t.scope === 'monthly')
+  const allWishlists = useLiveQuery(() => db.wishlists.toArray(), []) || []
 
   // Seed sample data on first run only if not initialized
   useEffect(() => {
@@ -58,7 +53,7 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               dueDate: todayStr,
               dueTime: '14:00',
               completed: false,
-              synced: false,
+              synced: 0,
               createdAt: now,
               updatedAt: now,
             },
@@ -70,7 +65,7 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               dueDate: todayStr,
               dueTime: '06:30',
               completed: true,
-              synced: false,
+              synced: 0,
               createdAt: now,
               updatedAt: now,
             },
@@ -81,7 +76,7 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               category: 'Belajar',
               dueDate: todayStr,
               completed: false,
-              synced: false,
+              synced: 0,
               createdAt: now,
               updatedAt: now,
             },
@@ -92,7 +87,7 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               category: 'Finansial',
               dueDate: todayStr,
               completed: false,
-              synced: false,
+              synced: 0,
               createdAt: now,
               updatedAt: now,
             },
@@ -112,14 +107,19 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
   // The primary target card (Next incomplete daily to-do, or most recent)
   const targetTodo = dailyTodos.find((t) => !t.completed) || dailyTodos[0]
 
-  // Filtered to-do list (by scope and category)
-  const displayTodos = allTodos.filter((t) => {
-    const matchScope = selectedFilter === 'all' || t.scope === selectedFilter
-    const matchCategory = selectedCategory === 'all' || t.category === selectedCategory
-    return matchScope && matchCategory
-  })
+  // Quick preview tasks (up to 4 daily tasks)
+  const previewDailyTodos = dailyTodos.slice(0, 4)
 
-  // Toggle todo completion in Dexie & sync to Supabase
+  // Wishlist metrics
+  const destinationItems = allWishlists.filter((w) => w.type === 'place')
+  const itemGoods = allWishlists.filter((w) => w.type === 'item')
+
+  const totalSavedGoods = itemGoods.reduce((sum, item) => sum + (item.currentSaved || 0), 0)
+  const totalTargetGoods = itemGoods.reduce((sum, item) => sum + (item.targetCost || 0), 0)
+  const goodsPercentage =
+    totalTargetGoods > 0 ? Math.min(100, Math.round((totalSavedGoods / totalTargetGoods) * 100)) : 74
+
+  // Toggle todo completion
   const handleToggleTodo = async (id?: number, currentStatus?: boolean) => {
     if (!id) return
     await db.todos.update(id, {
@@ -128,13 +128,6 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
       updatedAt: new Date().toISOString(),
     })
     pushLocalData().catch(() => {})
-  }
-
-  // Delete todo from Dexie & Supabase
-  const handleDeleteTodo = async (id?: number) => {
-    if (!id) return
-    await db.todos.delete(id)
-    deleteTodoFromCloud(id).catch(() => {})
   }
 
   const openNewTodo = (scope: 'daily' | 'weekly' | 'monthly' = 'daily') => {
@@ -212,7 +205,7 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900">
                 <Clock className="w-3.5 h-3.5 stroke-[2.2]" />
                 <span>
-                  Target Hari Ini • {targetTodo.dueTime || 'Hari ini'}
+                  Target Utama • {targetTodo.dueTime || 'Hari ini'}
                 </span>
               </div>
               <h2
@@ -297,10 +290,10 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
           </div>
 
           <button
-            onClick={() => setSelectedFilter('weekly')}
+            onClick={() => onNavigate?.('todo')}
             className="inline-flex items-center gap-1 text-xs font-bold text-amber-950 mt-3 group text-left"
           >
-            <span>Check</span>
+            <span>Buka Tugas</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
@@ -322,10 +315,10 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
           </div>
 
           <button
-            onClick={() => setSelectedFilter('monthly')}
+            onClick={() => onNavigate?.('todo')}
             className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 mt-3 group text-left"
           >
-            <span>Check</span>
+            <span>Buka Tugas</span>
             <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
           </button>
         </div>
@@ -337,13 +330,13 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               <MapPin className="w-4 h-4 stroke-[2.2]" />
             </span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/60 text-teal-900">
-              65%
+              {destinationItems.length} Destinasi
             </span>
           </div>
 
           <div className="mt-2">
             <h3 className="text-sm font-bold text-[#18181B]">Destinasi Impian</h3>
-            <p className="text-xs text-slate-600 mt-0.5">Kyoto & Rinjani Trip</p>
+            <p className="text-xs text-slate-600 mt-0.5">Rencana liburan & trip</p>
 
             <div className="w-full bg-white/60 h-2 rounded-full mt-2.5 overflow-hidden">
               <div className="bg-teal-600 h-full rounded-full w-[65%]"></div>
@@ -366,16 +359,16 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
               <Sparkles className="w-4 h-4 stroke-[2.2]" />
             </span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/60 text-rose-900">
-              74%
+              {goodsPercentage}%
             </span>
           </div>
 
           <div className="mt-2">
             <h3 className="text-sm font-bold text-[#18181B]">Wishlist Barang</h3>
-            <p className="text-xs text-slate-600 mt-0.5">Rp 18.5jt / 25jt</p>
+            <p className="text-xs text-slate-600 mt-0.5">{itemGoods.length} Barang Impian</p>
 
             <div className="w-full bg-white/60 h-2 rounded-full mt-2.5 overflow-hidden">
-              <div className="bg-rose-600 h-full rounded-full w-[74%]"></div>
+              <div className="bg-rose-600 h-full rounded-full" style={{ width: `${goodsPercentage}%` }}></div>
             </div>
           </div>
 
@@ -389,167 +382,87 @@ export default function BentoDashboard({ onNavigate }: BentoDashboardProps) {
         </div>
       </div>
 
-      {/* FILTER TABS & TASK LIST SECTION */}
+      {/* QUICK PREVIEW TUGAS HARI INI */}
       <section className="pt-2 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 bg-slate-200/60 p-1 rounded-full text-xs font-bold">
-            <button
-              onClick={() => setSelectedFilter('daily')}
-              className={`px-3 py-1 rounded-full transition-all ${
-                selectedFilter === 'daily'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Harian
-            </button>
-            <button
-              onClick={() => setSelectedFilter('weekly')}
-              className={`px-3 py-1 rounded-full transition-all ${
-                selectedFilter === 'weekly'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Mingguan
-            </button>
-            <button
-              onClick={() => setSelectedFilter('monthly')}
-              className={`px-3 py-1 rounded-full transition-all ${
-                selectedFilter === 'monthly'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Bulanan
-            </button>
-            <button
-              onClick={() => setSelectedFilter('all')}
-              className={`px-3 py-1 rounded-full transition-all ${
-                selectedFilter === 'all'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              Semua
-            </button>
+          <div>
+            <h3 className="text-sm font-black text-[#18181B]">Fokus Tugas Hari Ini</h3>
+            <p className="text-[11px] text-slate-400 font-medium">Ringkasan aktivitas hari ini</p>
           </div>
 
-          {/* Add Todo Button */}
           <button
-            onClick={() => openNewTodo(selectedFilter === 'all' ? 'daily' : selectedFilter)}
-            className="h-8 px-3 rounded-full bg-[#18181B] text-white text-xs font-bold flex items-center gap-1 hover:bg-slate-800 active:scale-95 transition-all shadow-xs"
+            onClick={() => onNavigate?.('todo')}
+            className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Tugas</span>
+            <span>Semua Tugas</span>
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* Category Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-          {categories.map((cat) => {
-            const isSelected =
-              (cat === 'Semua' && selectedCategory === 'all') || selectedCategory === cat
-            return (
+        <div className="space-y-2">
+          {previewDailyTodos.length === 0 ? (
+            <div className="bg-white rounded-3xl p-5 text-center text-xs text-slate-400 border border-slate-100">
+              Belum ada tugas hari ini.{' '}
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat === 'Semua' ? 'all' : cat)}
-                className={`px-3 py-1 rounded-full whitespace-nowrap text-[11px] font-bold transition-all ${
-                  isSelected
-                    ? 'bg-[#18181B] text-white shadow-2xs'
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/60'
-                }`}
+                onClick={() => openNewTodo('daily')}
+                className="font-bold text-indigo-600 hover:underline ml-1"
               >
-                {cat}
+                Tambah Tugas
               </button>
-            )
-          })}
-        </div>
-
-        {/* Task Cards List */}
-        <div className="space-y-2.5">
-          {displayTodos.length === 0 ? (
-            <div className="bg-white rounded-3xl p-6 text-center text-xs text-slate-400 border border-slate-100">
-              Tidak ada tugas pada kategori ini. Tekan tombol <span className="font-bold text-slate-600">+ Tugas</span> untuk menambahkan!
             </div>
           ) : (
-            displayTodos.map((todo) => {
-              const calendarUrl = generateGoogleCalendarUrl(todo)
-
-              return (
-                <div
-                  key={todo.id}
-                  className="bg-white rounded-3xl p-3.5 shadow-2xs border border-slate-100/90 flex items-center justify-between gap-2 hover:shadow-xs transition-all"
+            previewDailyTodos.map((todo) => (
+              <div
+                key={todo.id}
+                className="bg-white rounded-2xl p-3 shadow-2xs border border-slate-100/90 flex items-center justify-between gap-2.5 hover:shadow-xs transition-all"
+              >
+                <button
+                  onClick={() => handleToggleTodo(todo.id, todo.completed)}
+                  aria-label="Toggle status"
+                  className="min-w-[36px] min-h-[36px] flex items-center justify-center text-slate-300 hover:text-slate-900 transition-colors flex-shrink-0 active:scale-95"
                 >
-                  {/* Checkbox Tick with 44x44px mobile touch target */}
-                  <button
-                    onClick={() => handleToggleTodo(todo.id, todo.completed)}
-                    aria-label="Toggle status"
-                    className="min-w-[44px] min-h-[44px] -ml-2.5 flex items-center justify-center text-slate-300 hover:text-slate-900 transition-colors flex-shrink-0 active:scale-95"
+                  {todo.completed ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
+                  ) : (
+                    <Circle className="w-5 h-5 stroke-[1.8]" />
+                  )}
+                </button>
+
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-xs font-bold text-[#18181B] truncate ${
+                      todo.completed ? 'line-through text-slate-400' : ''
+                    }`}
                   >
-                    {todo.completed ? (
-                      <CheckCircle2 className="w-6 h-6 text-emerald-600 stroke-[2.5]" />
-                    ) : (
-                      <Circle className="w-6 h-6 stroke-[1.8]" />
-                    )}
-                  </button>
-
-                  {/* Todo Details */}
-                  <div className="flex-1 min-w-0">
-                    <h4
-                      className={`text-xs font-bold text-[#18181B] truncate ${
-                        todo.completed ? 'line-through text-slate-400' : ''
-                      }`}
-                    >
-                      {todo.title}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-semibold text-slate-500 flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />
-                        <span>{todo.dueTime ? `${todo.dueTime} • ` : ''}{todo.dueDate}</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-slate-100 text-slate-600">
-                        {todo.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Action Icons with generous mobile touch targets (36-44px) */}
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
-                    {/* Add to Calendar Shortcut */}
-                    <a
-                      href={calendarUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-w-[38px] min-h-[38px] rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors active:scale-95"
-                      title="Add to Google Calendar"
-                    >
-                      <CalendarPlus className="w-4 h-4" />
-                    </a>
-
-                    {/* Download ICS */}
-                    <button
-                      onClick={() => downloadICSFile(todo)}
-                      className="min-w-[38px] min-h-[38px] rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors active:scale-95"
-                      title="Download .ICS file"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDeleteTodo(todo.id)}
-                      className="min-w-[38px] min-h-[38px] rounded-full bg-slate-50 hover:bg-rose-50 flex items-center justify-center text-slate-400 hover:text-rose-600 transition-colors active:scale-95"
-                      title="Hapus Tugas"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                    {todo.title}
+                  </p>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    {todo.dueTime || 'Hari ini'} • {todo.category}
+                  </span>
                 </div>
-              )
-            })
+
+                <span
+                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                    todo.completed
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-indigo-50 text-indigo-700'
+                  }`}
+                >
+                  {todo.completed ? 'Selesai' : 'Aktif'}
+                </span>
+              </div>
+            ))
           )}
         </div>
+
+        {/* Quick Add Button */}
+        <button
+          onClick={() => openNewTodo('daily')}
+          className="w-full py-2.5 rounded-2xl bg-white border border-dashed border-slate-300 text-slate-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all shadow-2xs"
+        >
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>Tambah Tugas Cepat</span>
+        </button>
       </section>
 
       {/* CREATE TODO MODAL */}

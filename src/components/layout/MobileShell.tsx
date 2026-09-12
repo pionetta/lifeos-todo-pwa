@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import {
+  LayoutDashboard,
   CheckSquare,
   Heart,
   FileText,
@@ -11,7 +12,7 @@ import {
 } from 'lucide-react'
 import QuickSearchModal from '../search/QuickSearchModal'
 
-export type NavTab = 'todo' | 'wishlist' | 'notes' | 'account'
+export type NavTab = 'dashboard' | 'todo' | 'wishlist' | 'notes' | 'account'
 
 interface MobileShellProps {
   activeTab: NavTab
@@ -43,6 +44,7 @@ export default function MobileShell({
   }, [])
 
   const navItems = [
+    { id: 'dashboard' as NavTab, label: 'Beranda', icon: LayoutDashboard },
     { id: 'todo' as NavTab, label: 'Tugas', icon: CheckSquare },
     { id: 'wishlist' as NavTab, label: 'Wishlist', icon: Heart },
     { id: 'notes' as NavTab, label: 'Catatan', icon: FileText },

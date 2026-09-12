@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import MobileShell, { type NavTab } from './components/layout/MobileShell'
 import BentoDashboard from './components/dashboard/BentoDashboard'
+import TodoModule from './components/todo/TodoModule'
 import WishlistModule from './components/wishlist/WishlistModule'
 import DailyNotesModule from './components/notes/DailyNotesModule'
 import ProfileModule from './components/profile/ProfileModule'
@@ -12,7 +13,7 @@ import { registerBackgroundSyncListeners, pullCloudData, runFullSync } from './s
 import { supabase } from './lib/supabase'
 
 function MainContent() {
-  const [activeTab, setActiveTab] = useState<NavTab>('todo')
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
   const { user, session, loading } = useAuth()
 
   // Tangani kembalinya sesi OAuth dari URL (hash token atau query code)
@@ -81,7 +82,8 @@ function MainContent() {
   // Langsung buka antarmuka aplikasi penuh (MobileShell)
   return (
     <MobileShell activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'todo' && <BentoDashboard onNavigate={setActiveTab} />}
+      {activeTab === 'dashboard' && <BentoDashboard onNavigate={setActiveTab} />}
+      {activeTab === 'todo' && <TodoModule />}
       {activeTab === 'wishlist' && <WishlistModule />}
       {activeTab === 'notes' && <DailyNotesModule />}
       {activeTab === 'account' && <ProfileModule />}
