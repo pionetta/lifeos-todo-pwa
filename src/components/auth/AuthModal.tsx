@@ -8,7 +8,8 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  FlaskConical
 } from 'lucide-react'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { useAuth } from '../../context/useAuth'
@@ -27,7 +28,7 @@ export default function AuthModal({
   initialMode = 'login',
   onSuccess,
 }: AuthModalProps) {
-  const { signInWithGoogle, signIn, signUp } = useAuth()
+  const { signInWithGoogle, signIn, signUp, loginAsDemoUser } = useAuth()
   const [mode, setMode] = useState<'login' | 'register'>(initialMode)
   const [fullName, setFullName] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
@@ -377,6 +378,33 @@ export default function AuthModal({
                 : mode === 'login'
                 ? 'Masuk'
                 : 'Daftar Sekarang'}
+            </button>
+          </div>
+
+          {/* Tombol Akun Demo (Testing Mode) */}
+          <div className="pt-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true)
+                try {
+                  await loginAsDemoUser()
+                  onSuccess('demo@lifeos.local')
+                  onClose()
+                } finally {
+                  setLoading(false)
+                }
+              }}
+              disabled={loading || googleLoading}
+              className="w-full py-2.5 px-3.5 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold flex items-center justify-between border border-purple-200/80 transition-all active:scale-98 shadow-2xs"
+            >
+              <div className="flex items-center gap-2">
+                <FlaskConical className="w-3.5 h-3.5 text-purple-600" />
+                <span>Masuk Akun Demo (Testing Mode)</span>
+              </div>
+              <span className="text-[10px] font-extrabold bg-white text-purple-700 px-2 py-0.5 rounded-full shadow-2xs uppercase tracking-wider">
+                Tester
+              </span>
             </button>
           </div>
         </form>

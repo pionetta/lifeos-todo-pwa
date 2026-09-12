@@ -5,7 +5,8 @@ import {
   Trash2,
   Sparkles,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import { compressAvatarImage } from '../../utils/image'
@@ -51,31 +52,30 @@ export default function ProfileSetupModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!fullName.trim()) {
-      setErrorMsg('Silakan masukkan nama Anda')
-      return
-    }
+    const nameToSave = fullName.trim() || user?.email?.split('@')[0] || 'Pengguna LifeOS'
 
     setLoading(true)
     setErrorMsg(null)
 
     try {
-      const res = await updateUserProfile({
-        fullName: fullName.trim(),
+      await updateUserProfile({
+        fullName: nameToSave,
         avatarUrl: avatarUrl.trim() || undefined,
       })
-
-      if (res.error) {
-        setErrorMsg(res.error.message)
-      } else {
-        onComplete()
-      }
+      onComplete()
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal menyimpan profil'
-      setErrorMsg(msg)
+      console.warn('Fallback profile setup complete:', err)
+      onComplete()
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSkip = () => {
+    if (user?.id) {
+      localStorage.setItem(`lifeos_profile_setup_${user.id}`, 'true')
+    }
+    onComplete()
   }
 
   const userInitial = fullName.trim()
@@ -88,6 +88,15 @@ export default function ProfileSetupModal({
         className="w-full max-w-[390px] bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 relative space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Close Button */}
+        <button
+          onClick={handleSkip}
+          aria-label="Tutup atau lewati"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 flex items-center justify-center transition-colors z-10"
+        >
+          <X className="w-4 h-4 stroke-[2.2]" />
+        </button>
+
         {/* Header */}
         <div className="text-center space-y-1.5 pt-1">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">
@@ -187,7 +196,7 @@ export default function ProfileSetupModal({
           )}
 
           {/* SUBMIT BUTTON */}
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               disabled={loading || isProcessingAvatar || !fullName.trim()}
@@ -204,6 +213,14 @@ export default function ProfileSetupModal({
                   <span>Simpan & Masuk ke LifeOS</span>
                 </>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="w-full py-2 text-center text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Lewati untuk sekarang
             </button>
           </div>
         </form>

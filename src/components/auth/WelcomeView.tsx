@@ -9,7 +9,8 @@ import {
   Zap,
   LogIn,
   UserPlus,
-  RefreshCw
+  RefreshCw,
+  FlaskConical
 } from 'lucide-react'
 import AuthModal from './AuthModal'
 import { useAuth } from '../../context/useAuth'
@@ -21,14 +22,27 @@ interface WelcomeViewProps {
 export default function WelcomeView({
   onAuthSuccess,
 }: WelcomeViewProps) {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, loginAsDemoUser } = useAuth()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isDemoLoading, setIsDemoLoading] = useState(false)
 
   const openAuth = (mode: 'login' | 'register') => {
     setAuthMode(mode)
     setIsAuthModalOpen(true)
+  }
+
+  const handleQuickDemo = async () => {
+    setIsDemoLoading(true)
+    try {
+      await loginAsDemoUser()
+      onAuthSuccess?.('demo@lifeos.local')
+    } catch (err) {
+      console.error('Gagal masuk akun demo:', err)
+    } finally {
+      setIsDemoLoading(false)
+    }
   }
 
   const handleQuickGoogle = async () => {
@@ -204,6 +218,25 @@ export default function WelcomeView({
               <span>Daftar Baru</span>
             </button>
           </div>
+
+          {/* 3. Tombol Cepat: Akun Demo (Tester Mode) */}
+          <button
+            onClick={handleQuickDemo}
+            disabled={isDemoLoading || isGoogleLoading}
+            className="w-full py-2.5 px-4 rounded-2xl bg-[#EDE9FE] hover:bg-[#DDD6FE] text-[#5B21B6] text-xs font-bold flex items-center justify-between transition-all active:scale-98 border border-[#DDD6FE]/70 shadow-2xs disabled:opacity-60"
+          >
+            <div className="flex items-center gap-2">
+              {isDemoLoading ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FlaskConical className="w-3.5 h-3.5 text-[#6D28D9]" />
+              )}
+              <span>Coba dengan Akun Demo</span>
+            </div>
+            <span className="px-2 py-0.5 rounded-full bg-white text-[10px] font-black text-[#6D28D9] shadow-2xs uppercase tracking-wider">
+              Tester Mode
+            </span>
+          </button>
 
           <div className="text-center pt-1">
             <p className="text-[10px] text-slate-400 font-medium">

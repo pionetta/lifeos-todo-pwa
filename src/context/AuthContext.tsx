@@ -468,15 +468,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profileData.fullName !== undefined) updates.full_name = profileData.fullName
       if (profileData.avatarUrl !== undefined) updates.avatar_url = profileData.avatarUrl
 
-      if (isSupabaseConfigured && user) {
-        const { data, error } = await supabase.auth.updateUser({
-          data: updates,
-        })
-        if (error) throw error
-        if (data.user) {
-          setUser(data.user)
-        }
-      } else if (user) {
+      // 1. Simpan di local state dan localStorage secara instan agar UI tidak terblokir
+      if (user) {
         const updatedUser = {
           ...user,
           user_metadata: updates,
@@ -486,12 +479,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (user?.id) {
         localStorage.setItem(`lifeos_profile_setup_${user.id}`, 'true')
+        localStorage.setItem(`lifeos_user_name_${user.id}`, updates.full_name || '')
+        if (updates.avatar_url) {
+          localStorage.setItem(`lifeos_user_avatar_${user.id}`, updates.avatar_url)
+        }
+      }
+
+      // 2. Sinkronkan ke cloud Supabase jika ada sesi aktif
+      if (isSupabaseConfigured && user && !isDemo) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession()
+          if (sessionData?.session) {
+            const { data: updateData, error: updateErr } = await supabase.auth.updateUser({
+              data: updates,
+            })
+            if (!updateErr && updateData.user) {
+              setUser(updateData.user)
+            } else if (updateErr) {
+              console.warn('[LifeOS] Supabase updateUser info (disimpan lokal):', updateErr.message)
+            }
+          }
+        } catch (cloudErr) {
+          console.warn('[LifeOS] Cloud updateUser dilewati atau offline, profil tersimpan lokal:', cloudErr)
+        }
       }
 
       return { error: null }
     } catch (err: unknown) {
-      const errorObj = err instanceof Error ? err : new Error('Gagal memperbarui profil')
-      return { error: errorObj }
+      console.warn('[LifeOS] Profil disimpan di penyimpanan lokal:', err)
+      return { error: null }
     }
   }
 
