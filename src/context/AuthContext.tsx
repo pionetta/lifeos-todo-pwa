@@ -18,11 +18,19 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   isDemo: boolean
-  signUp: (email: string, password: string) => Promise<AuthResponse>
+  signUp: (
+    email: string,
+    password: string,
+    options?: { fullName?: string; avatarUrl?: string }
+  ) => Promise<AuthResponse>
   signIn: (email: string, password: string) => Promise<AuthResponse>
   signInWithGoogle: () => Promise<{ error: Error | null }>
   loginAsDemoUser: () => Promise<void>
   signOut: () => Promise<void>
+  updateUserProfile: (data: {
+    fullName?: string
+    avatarUrl?: string
+  }) => Promise<{ error: Error | null }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -232,7 +240,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Fungsi Registrasi Pengguna Baru
-  const signUp = async (email: string, password: string): Promise<AuthResponse> => {
+  const signUp = async (
+    email: string,
+    password: string,
+    options?: { fullName?: string; avatarUrl?: string }
+  ): Promise<AuthResponse> => {
     if (!isSupabaseConfigured) {
       return {
         user: null,
@@ -241,13 +253,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const metadata: Record<string, any> = {
+        profile_setup_completed: true,
+      }
+      if (options?.fullName) metadata.full_name = options.fullName
+      if (options?.avatarUrl) metadata.avatar_url = options.avatarUrl
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: metadata,
+        },
       })
 
       if (error) {
         return { user: null, error }
+      }
+
+      if (data.user) {
+        setUser(data.user)
       }
 
       return { user: data.user, error: null }
@@ -429,6 +454,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Fungsi Update Profil Pengguna (Nama & Avatar)
+  const updateUserProfile = async (profileData: {
+    fullName?: string
+    avatarUrl?: string
+  }): Promise<{ error: Error | null }> => {
+    try {
+      const currentMeta = user?.user_metadata || {}
+      const updates: Record<string, any> = {
+        ...currentMeta,
+        profile_setup_completed: true,
+      }
+      if (profileData.fullName !== undefined) updates.full_name = profileData.fullName
+      if (profileData.avatarUrl !== undefined) updates.avatar_url = profileData.avatarUrl
+
+      if (isSupabaseConfigured && user) {
+        const { data, error } = await supabase.auth.updateUser({
+          data: updates,
+        })
+        if (error) throw error
+        if (data.user) {
+          setUser(data.user)
+        }
+      } else if (user) {
+        const updatedUser = {
+          ...user,
+          user_metadata: updates,
+        }
+        setUser(updatedUser as User)
+      }
+
+      if (user?.id) {
+        localStorage.setItem(`lifeos_profile_setup_${user.id}`, 'true')
+      }
+
+      return { error: null }
+    } catch (err: unknown) {
+      const errorObj = err instanceof Error ? err : new Error('Gagal memperbarui profil')
+      return { error: errorObj }
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -441,6 +507,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         loginAsDemoUser,
         signOut,
+        updateUserProfile,
       }}
     >
       {children}

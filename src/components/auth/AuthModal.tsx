@@ -3,12 +3,16 @@ import {
   X,
   Mail,
   Lock,
+  User,
+  Camera,
+  Trash2,
   CheckCircle2,
   AlertCircle,
   RefreshCw
 } from 'lucide-react'
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { isSupabaseConfigured } from '../../lib/supabase'
 import { useAuth } from '../../context/useAuth'
+import { compressAvatarImage } from '../../utils/image'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -23,12 +27,15 @@ export default function AuthModal({
   initialMode = 'login',
   onSuccess,
 }: AuthModalProps) {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, signIn, signUp } = useAuth()
   const [mode, setMode] = useState<'login' | 'register'>(initialMode)
+  const [fullName, setFullName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
   if (!isOpen) return null
@@ -47,6 +54,23 @@ export default function AuthModal({
       setMessage({ type: 'error', text: msg })
     } finally {
       setGoogleLoading(false)
+    }
+  }
+
+  // Handle Avatar Image Upload
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsProcessingAvatar(true)
+    setMessage(null)
+    try {
+      const base64 = await compressAvatarImage(file)
+      setAvatarUrl(base64)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal memproses foto profil'
+      setMessage({ type: 'error', text: msg })
+    } finally {
+      setIsProcessingAvatar(false)
     }
   }
 
@@ -69,35 +93,32 @@ export default function AuthModal({
       }
 
       if (mode === 'register') {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
+        if (!fullName.trim()) {
+          setMessage({ type: 'error', text: 'Nama pengguna wajib diisi saat mendaftar.' })
+          setLoading(false)
+          return
+        }
+
+        const { user, error } = await signUp(email, password, {
+          fullName: fullName.trim(),
+          avatarUrl: avatarUrl.trim() || undefined,
         })
         if (error) throw error
-        if (data.session) {
-          setMessage({
-            type: 'success',
-            text: 'Pendaftaran berhasil! Mengalihkan ke dashboard...',
-          })
-          setTimeout(() => {
-            onSuccess(data.user?.email ?? email)
-            onClose()
-          }, 400)
-        } else {
-          setMessage({
-            type: 'success',
-            text: 'Pendaftaran berhasil! Silakan periksa inbox email untuk konfirmasi atau silakan login.',
-          })
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+
+        setMessage({
+          type: 'success',
+          text: 'Pendaftaran berhasil! Mengalihkan ke akun Anda...',
         })
+        setTimeout(() => {
+          onSuccess(user?.email ?? email)
+          onClose()
+        }, 500)
+      } else {
+        const { user, error } = await signIn(email, password)
         if (error) throw error
         setMessage({ type: 'success', text: 'Berhasil masuk ke akun!' })
         setTimeout(() => {
-          onSuccess(data.user?.email ?? email)
+          onSuccess(user?.email ?? email)
           onClose()
         }, 400)
       }
@@ -112,7 +133,7 @@ export default function AuthModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-[400px] max-h-[85vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 relative space-y-4"
+        className="w-full max-w-[400px] max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 relative space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Modal */}
@@ -210,6 +231,83 @@ export default function AuthModal({
 
         {/* Form Inputs */}
         <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
+          {/* REGISTER ONLY: FOTO PROFIL (OPSIONAL) */}
+          {mode === 'register' && (
+            <div className="flex flex-col items-center justify-center space-y-1.5 pb-1">
+              <div className="relative">
+                <div className="w-18 h-18 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-400 p-[2px] shadow-sm">
+                  <div className="w-full h-full rounded-full bg-slate-50 overflow-hidden flex items-center justify-center font-black text-slate-600 text-base relative">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Preview Foto"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <User className="w-8 h-8 text-slate-300" />
+                    )}
+
+                    {isProcessingAvatar && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white">
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <label
+                  htmlFor="register-avatar-input"
+                  className="absolute bottom-0 right-0 w-7 h-7 rounded-full bg-[#18181B] text-white flex items-center justify-center shadow hover:bg-indigo-600 active:scale-95 transition-all cursor-pointer"
+                  title="Pilih foto profil"
+                >
+                  <Camera className="w-3.5 h-3.5 stroke-[2]" />
+                  <input
+                    id="register-avatar-input"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarFileChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-500">
+                  Foto Profil <span className="text-slate-400 font-normal">(Opsional)</span>
+                </span>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setAvatarUrl('')}
+                    className="text-[11px] font-bold text-rose-500 hover:text-rose-700 flex items-center gap-0.5"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Hapus</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* REGISTER ONLY: NAMA LENGKAP */}
+          {mode === 'register' && (
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500">Nama Lengkap / Panggilan *</label>
+              <div className="relative">
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Rusdi Aristiawan"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full pl-10 pr-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900 transition-all"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* EMAIL */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500">Email Pengguna *</label>
             <div className="relative">
@@ -225,6 +323,7 @@ export default function AuthModal({
             </div>
           </div>
 
+          {/* PASSWORD */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-500">Kata Sandi *</label>
             <div className="relative">
@@ -270,7 +369,7 @@ export default function AuthModal({
             </button>
             <button
               type="submit"
-              disabled={loading || googleLoading}
+              disabled={loading || googleLoading || isProcessingAvatar}
               className="flex-1 py-2.5 rounded-2xl bg-[#18181B] text-white text-xs font-bold hover:bg-slate-800 disabled:opacity-50 active:scale-98 transition-all shadow-sm"
             >
               {loading

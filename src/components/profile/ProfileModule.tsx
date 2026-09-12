@@ -14,16 +14,19 @@ import {
   Check,
   LogOut,
   UserCheck,
-  FlaskConical
+  FlaskConical,
+  Edit3
 } from 'lucide-react'
 import { supabaseUrl, isSupabaseConfigured, supabase } from '../../lib/supabase'
 import { db } from '../../db'
 import { useAuth } from '../../context/useAuth'
 import { requestNotificationPermission } from '../../utils/notifications'
 import { pullCloudData, pushLocalData, runFullSync } from '../../services/syncService'
+import ProfileSetupModal from '../auth/ProfileSetupModal'
 
 export default function ProfileModule() {
   const { user, signOut, isDemo } = useAuth()
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
 
   // Notification state
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>(
@@ -194,38 +197,58 @@ export default function ProfileModule() {
     URL.revokeObjectURL(url)
   }
 
-  const userInitial = user?.email ? user.email.slice(0, 2).toUpperCase() : 'OS'
-  const userName = user?.email ? user.email.split('@')[0] : 'Pengguna LifeOS'
+  const meta = user?.user_metadata || {}
+  const userName = meta.full_name || meta.name || (user?.email ? user.email.split('@')[0] : 'Pengguna LifeOS')
+  const userAvatar = meta.avatar_url || meta.picture || ''
+  const userInitial = userName ? userName.slice(0, 2).toUpperCase() : 'OS'
 
   return (
     <div className="space-y-4 pt-1">
       {/* 1. KARTU PROFIL PENGGUNA TERAUTENTIKASI */}
       <section className="bg-white rounded-3xl p-5 shadow-xs border border-slate-100 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-rose-400 p-[2px] shadow-sm flex-shrink-0">
-            <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-indigo-900 text-sm">
-              {userInitial}
+            <div className="w-full h-full rounded-2xl bg-white overflow-hidden flex items-center justify-center font-black text-indigo-900 text-sm relative">
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              ) : (
+                <span>{userInitial}</span>
+              )}
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-extrabold text-[#18181B] truncate max-w-[180px]">
+              <h2 className="text-base font-extrabold text-[#18181B] truncate max-w-[170px]">
                 {userName}
               </h2>
+              <button
+                onClick={() => setIsEditProfileOpen(true)}
+                className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                title="Edit Nama atau Foto Profil"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
               {isDemo && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-black border border-purple-200">
                   <FlaskConical className="w-3 h-3 text-purple-600" />
-                  <span>Akun Demo / Testing Mode</span>
+                  <span>Akun Demo</span>
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 truncate max-w-[220px]">
+            <p className="text-xs text-slate-500 truncate max-w-[200px]">
               {user?.email}
             </p>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100/80 text-emerald-800 text-[10px] font-bold mt-1.5">
               <UserCheck className="w-3 h-3 stroke-[2.5]" />
-              <span>{isDemo ? 'Database Lokal (Demo Mode)' : 'Cloud Sync Aktif (Supabase RLS)'}</span>
+              <span>{isDemo ? 'Database Lokal' : 'Cloud Sync Aktif'}</span>
             </div>
           </div>
         </div>
@@ -450,6 +473,12 @@ export default function ProfileModule() {
         <Zap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
         <span>Data lokal tersinkron aman dengan enkripsi akun Supabase Anda.</span>
       </div>
+
+      {/* MODAL EDIT PROFIL */}
+      <ProfileSetupModal
+        isOpen={isEditProfileOpen}
+        onComplete={() => setIsEditProfileOpen(false)}
+      />
     </div>
   )
 }

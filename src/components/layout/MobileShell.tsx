@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import QuickSearchModal from '../search/QuickSearchModal'
 
+import { useAuth } from '../../context/useAuth'
+
 export type NavTab = 'dashboard' | 'todo' | 'wishlist' | 'notes' | 'account'
 
 interface MobileShellProps {
@@ -25,6 +27,7 @@ export default function MobileShell({
   onTabChange,
   children,
 }: MobileShellProps) {
+  const { user } = useAuth()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -51,6 +54,13 @@ export default function MobileShell({
     { id: 'account' as NavTab, label: 'Akun', icon: User },
   ]
 
+  // User details from metadata
+  const meta = user?.user_metadata || {}
+  const rawName = meta.full_name || meta.name || (user?.email ? user.email.split('@')[0] : 'Sobat')
+  const userFirstName = rawName.split(' ')[0] || rawName
+  const userAvatar = meta.avatar_url || meta.picture || ''
+  const userInitial = userFirstName.slice(0, 2).toUpperCase()
+
   return (
     <div className="min-h-screen bg-[#F4F5FA] flex justify-center text-[#18181B] antialiased">
       {/* Mobile Frame (Optimized for iPhone / Android viewports, max-w-[430px]) */}
@@ -61,18 +71,25 @@ export default function MobileShell({
           <div className="flex items-center justify-between">
             {/* User Profile & Greeting */}
             <div className="flex items-center gap-3">
-              <div className="relative">
+              <button
+                onClick={() => onTabChange('account')}
+                title="Buka Pengaturan Akun"
+                className="relative active:scale-95 transition-transform text-left"
+              >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-400 p-[2px] shadow-sm">
-                  <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center font-bold text-slate-700 text-xs">
-                    <img
-                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                    <span>UD</span>
+                  <div className="w-full h-full rounded-full bg-white overflow-hidden flex items-center justify-center font-black text-indigo-900 text-xs">
+                    {userAvatar ? (
+                      <img
+                        src={userAvatar}
+                        alt={userFirstName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <span>{userInitial}</span>
+                    )}
                   </div>
                 </div>
                 {/* Real-time Connection Dot */}
@@ -82,12 +99,12 @@ export default function MobileShell({
                     isOnline ? 'bg-emerald-500' : 'bg-amber-500'
                   }`}
                 />
-              </div>
+              </button>
 
               <div>
                 <div className="flex items-center gap-1.5">
                   <h1 className="text-base font-extrabold tracking-tight text-[#18181B]">
-                    Hello, Udi!
+                    Hello, {userFirstName}!
                   </h1>
                   <span className="text-xs">✨</span>
                 </div>

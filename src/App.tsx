@@ -12,9 +12,25 @@ import { initTodoNotificationChecker } from './utils/notifications'
 import { registerBackgroundSyncListeners, pullCloudData, runFullSync } from './services/syncService'
 import { supabase } from './lib/supabase'
 
+import ProfileSetupModal from './components/auth/ProfileSetupModal'
+
 function MainContent() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
+  const [showProfileSetup, setShowProfileSetup] = useState(false)
   const { user, session, loading } = useAuth()
+
+  // Periksa apakah profil pengguna baru perlu dilengkapi (pertama kali login via Google dsb.)
+  useEffect(() => {
+    if (user?.id) {
+      const isSetupCompleted =
+        Boolean(user.user_metadata?.profile_setup_completed) ||
+        localStorage.getItem(`lifeos_profile_setup_${user.id}`) === 'true'
+      
+      if (!isSetupCompleted) {
+        setShowProfileSetup(true)
+      }
+    }
+  }, [user?.id, user?.user_metadata?.profile_setup_completed])
 
   // Tangani kembalinya sesi OAuth dari URL (hash token atau query code)
   useEffect(() => {
@@ -81,13 +97,21 @@ function MainContent() {
   // JIKA SUDAH LOGIN (session valid):
   // Langsung buka antarmuka aplikasi penuh (MobileShell)
   return (
-    <MobileShell activeTab={activeTab} onTabChange={setActiveTab}>
-      {activeTab === 'dashboard' && <BentoDashboard onNavigate={setActiveTab} />}
-      {activeTab === 'todo' && <TodoModule />}
-      {activeTab === 'wishlist' && <WishlistModule />}
-      {activeTab === 'notes' && <DailyNotesModule />}
-      {activeTab === 'account' && <ProfileModule />}
-    </MobileShell>
+    <>
+      <MobileShell activeTab={activeTab} onTabChange={setActiveTab}>
+        {activeTab === 'dashboard' && <BentoDashboard onNavigate={setActiveTab} />}
+        {activeTab === 'todo' && <TodoModule />}
+        {activeTab === 'wishlist' && <WishlistModule />}
+        {activeTab === 'notes' && <DailyNotesModule />}
+        {activeTab === 'account' && <ProfileModule />}
+      </MobileShell>
+
+      {/* MODAL SETUP PROFIL PERTAMA KALI (GOOGLE OAUTH / ONBOARDING) */}
+      <ProfileSetupModal
+        isOpen={showProfileSetup}
+        onComplete={() => setShowProfileSetup(false)}
+      />
+    </>
   )
 }
 
