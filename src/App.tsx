@@ -16,21 +16,14 @@ import ProfileSetupModal from './components/auth/ProfileSetupModal'
 
 function MainContent() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
-  const [showProfileSetup, setShowProfileSetup] = useState(false)
+  const [setupDismissed, setSetupDismissed] = useState(false)
   const { user, session, loading } = useAuth()
 
-  // Periksa apakah profil pengguna baru perlu dilengkapi (pertama kali login via Google dsb.)
-  useEffect(() => {
-    if (user?.id) {
-      const isSetupCompleted =
-        Boolean(user.user_metadata?.profile_setup_completed) ||
-        localStorage.getItem(`lifeos_profile_setup_${user.id}`) === 'true'
-      
-      if (!isSetupCompleted) {
-        setShowProfileSetup(true)
-      }
-    }
-  }, [user?.id, user?.user_metadata?.profile_setup_completed])
+  // Status kelengkapan profil pengguna (Google OAuth atau pendaftaran baru)
+  const isProfileCompleted =
+    Boolean(user?.user_metadata?.profile_setup_completed) ||
+    (user?.id ? localStorage.getItem(`lifeos_profile_setup_${user.id}`) === 'true' : false)
+  const showProfileSetup = Boolean(user && !isProfileCompleted && !setupDismissed)
 
   // Tangani kembalinya sesi OAuth dari URL (hash token atau query code)
   useEffect(() => {
@@ -109,7 +102,7 @@ function MainContent() {
       {/* MODAL SETUP PROFIL PERTAMA KALI (GOOGLE OAUTH / ONBOARDING) */}
       <ProfileSetupModal
         isOpen={showProfileSetup}
-        onComplete={() => setShowProfileSetup(false)}
+        onComplete={() => setSetupDismissed(true)}
       />
     </>
   )

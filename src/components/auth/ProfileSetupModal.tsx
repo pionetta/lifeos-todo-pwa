@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import {
   User,
   Camera,
@@ -20,21 +20,16 @@ export default function ProfileSetupModal({
   onComplete,
 }: ProfileSetupModalProps) {
   const { user, updateUserProfile } = useAuth()
-  const [fullName, setFullName] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState('')
+  const meta = user?.user_metadata || {}
+  const [fullName, setFullName] = useState(
+    () => meta.full_name || meta.name || user?.email?.split('@')[0] || ''
+  )
+  const [avatarUrl, setAvatarUrl] = useState(
+    () => meta.avatar_url || meta.picture || ''
+  )
   const [loading, setLoading] = useState(false)
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (user) {
-      const meta = user.user_metadata || {}
-      const initialName = meta.full_name || meta.name || user.email?.split('@')[0] || ''
-      const initialAvatar = meta.avatar_url || meta.picture || ''
-      setFullName(initialName)
-      setAvatarUrl(initialAvatar)
-    }
-  }, [user])
 
   if (!isOpen || !user) return null
 
