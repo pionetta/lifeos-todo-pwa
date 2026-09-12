@@ -5,7 +5,6 @@ import {
   Lock,
   CheckCircle2,
   AlertCircle,
-  FlaskConical,
   RefreshCw
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from '../../lib/supabase'
@@ -24,13 +23,12 @@ export default function AuthModal({
   initialMode = 'login',
   onSuccess,
 }: AuthModalProps) {
-  const { signInWithGoogle, loginAsDemoUser } = useAuth()
+  const { signInWithGoogle } = useAuth()
   const [mode, setMode] = useState<'login' | 'register'>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [demoLoading, setDemoLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
   if (!isOpen) return null
@@ -52,25 +50,6 @@ export default function AuthModal({
     }
   }
 
-  // Handle Quick Demo Account
-  const handleDemoLogin = async () => {
-    setDemoLoading(true)
-    setMessage(null)
-    try {
-      await loginAsDemoUser()
-      setMessage({ type: 'success', text: 'Masuk dengan Akun Demo berhasil! Mengalihkan...' })
-      setTimeout(() => {
-        onSuccess('demo@lifeos.local')
-        onClose()
-      }, 400)
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Gagal masuk akun demo'
-      setMessage({ type: 'error', text: msg })
-    } finally {
-      setDemoLoading(false)
-    }
-  }
-
   // Handle Form Submit (Email + Password)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,16 +60,11 @@ export default function AuthModal({
 
     try {
       if (!isSupabaseConfigured) {
-        // Fallback demo saat environment Supabase belum diisi
-        await loginAsDemoUser()
         setMessage({
-          type: 'success',
-          text: 'Masuk mode demo lokal berhasil!',
+          type: 'error',
+          text: 'Konfigurasi Supabase belum terpasang di file .env.',
         })
-        setTimeout(() => {
-          onSuccess(email)
-          onClose()
-        }, 500)
+        setLoading(false)
         return
       }
 
@@ -166,7 +140,7 @@ export default function AuthModal({
         <button
           type="button"
           onClick={handleGoogleLogin}
-          disabled={googleLoading || loading || demoLoading}
+          disabled={googleLoading || loading}
           className="w-full py-3 px-4 rounded-2xl bg-white text-slate-700 border border-slate-200/80 text-xs font-bold flex items-center justify-center gap-2.5 hover:bg-slate-50 active:scale-[0.98] transition-all shadow-2xs disabled:opacity-60"
         >
           {googleLoading ? (
@@ -192,26 +166,6 @@ export default function AuthModal({
             </svg>
           )}
           <span>Lanjutkan dengan Google</span>
-        </button>
-
-        {/* 2. TOMBOL AKUN DEMO INSTAN (TESTER MODE) */}
-        <button
-          type="button"
-          onClick={handleDemoLogin}
-          disabled={demoLoading || loading || googleLoading}
-          className="w-full py-2.5 px-3 rounded-2xl bg-[#EDE9FE] hover:bg-[#DDD6FE] text-[#5B21B6] text-xs font-bold flex items-center justify-between transition-all active:scale-98 border border-[#DDD6FE]/60 disabled:opacity-60 shadow-2xs"
-        >
-          <div className="flex items-center gap-2">
-            {demoLoading ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <FlaskConical className="w-3.5 h-3.5" />
-            )}
-            <span>Coba dengan Akun Demo</span>
-          </div>
-          <span className="px-2 py-0.5 rounded-full bg-white text-[10px] font-black text-[#6D28D9] shadow-2xs uppercase tracking-wider">
-            Tester Mode
-          </span>
         </button>
 
         {/* Pembatas / Divider */}
@@ -316,7 +270,7 @@ export default function AuthModal({
             </button>
             <button
               type="submit"
-              disabled={loading || demoLoading || googleLoading}
+              disabled={loading || googleLoading}
               className="flex-1 py-2.5 rounded-2xl bg-[#18181B] text-white text-xs font-bold hover:bg-slate-800 disabled:opacity-50 active:scale-98 transition-all shadow-sm"
             >
               {loading
