@@ -1,5 +1,16 @@
 import { useState } from 'react'
-import { LogIn, UserPlus, RefreshCw } from 'lucide-react'
+import {
+  Sparkles,
+  CheckCircle2,
+  Heart,
+  Calendar,
+  Trophy,
+  ShieldCheck,
+  Zap,
+  LogIn,
+  UserPlus,
+  RefreshCw
+} from 'lucide-react'
 import AuthModal from './AuthModal'
 import { useAuth } from '../../context/useAuth'
 
@@ -7,7 +18,9 @@ interface WelcomeViewProps {
   onAuthSuccess?: (email: string) => void
 }
 
-export default function WelcomeView({ onAuthSuccess }: WelcomeViewProps) {
+export default function WelcomeView({
+  onAuthSuccess,
+}: WelcomeViewProps) {
   const { signInWithGoogle } = useAuth()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
@@ -30,34 +43,119 @@ export default function WelcomeView({ onAuthSuccess }: WelcomeViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F5FA] flex items-center justify-center text-[#18181B] antialiased p-4">
-      {/* Compact Card Container */}
-      <div className="w-full max-w-[390px] bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-100 flex flex-col justify-between space-y-6">
+    <div className="min-h-screen bg-[#F4F5FA] flex justify-center text-[#18181B] antialiased">
+      {/* Mobile Screen Container */}
+      <div className="w-full max-w-[430px] min-h-screen flex flex-col justify-between bg-[#F8F9FD] p-6 shadow-xl border-x border-slate-100/80 relative">
         
-        {/* HERO SECTION */}
-        <div className="text-center space-y-3.5 pt-2">
-          {/* App Icon */}
-          <div className="inline-flex p-3 rounded-3xl bg-slate-50 border border-slate-100 shadow-xs">
-            <img
-              src="/icon-todo-app.svg"
-              alt="LifeOS App Icon"
-              className="w-14 h-14 rounded-2xl shadow-sm object-cover"
-            />
+        {/* TOP BRANDING & INTRO */}
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <img
+                src="/icon-todo-app.svg"
+                alt="LifeOS App Icon"
+                className="w-10 h-10 rounded-2xl shadow-sm object-cover"
+              />
+              <div>
+                <h1 className="text-xl font-black tracking-tight text-[#18181B]">
+                  Life<span className="text-indigo-600">OS</span>
+                </h1>
+                <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">
+                  Personal Life Organizer
+                </p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100/80 text-emerald-800 text-[10px] font-bold">
+              <Zap className="w-3 h-3" />
+              <span>Offline-First</span>
+            </span>
           </div>
 
-          <div className="space-y-1">
-            <h1 className="text-2xl font-black tracking-tight text-[#18181B]">
-              Life<span className="text-indigo-600">OS</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-medium max-w-[260px] mx-auto leading-relaxed">
-              Organisir to-do harian, tabungan impian, dan catatan refleksi dalam satu aplikasi.
+          <div className="space-y-1.5 pt-1">
+            <h2 className="text-2xl font-black tracking-tight text-[#18181B] leading-tight">
+              Organisir Harimu, Raih Impianmu ✨
+            </h2>
+            <p className="text-xs text-slate-500 leading-relaxed font-medium">
+              Aplikasi personal life-tracker cerdas dengan manajemen to-do multi-scope, kalkulator tabungan wishlist, dan log pencapaian harian.
             </p>
+          </div>
+
+          {/* BENTO FEATURE PREVIEW SHOWCASE */}
+          <div className="space-y-2.5 pt-1">
+            {/* Bento 1: Hero Progress Preview (Soft Iris) */}
+            <div className="bg-[#D7D9FE] rounded-3xl p-4 shadow-2xs flex items-center justify-between relative overflow-hidden">
+              <div className="space-y-1">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/70 text-[10px] font-bold text-[#3538CD]">
+                  <Sparkles className="w-3 h-3" />
+                  <span>Daily Focus</span>
+                </span>
+                <p className="text-sm font-black text-[#18181B]">
+                  Target Harian 85% Selesai
+                </p>
+                <p className="text-[11px] text-slate-600 font-semibold">
+                  11 dari 13 to-do tercapai hari ini
+                </p>
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-white/80 flex items-center justify-center text-[#3538CD] shadow-xs flex-shrink-0">
+                <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
+              </div>
+            </div>
+
+            {/* Bento Grid 2 Kolom Mini */}
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Card A: Wishlist Calculator (Mint) */}
+              <div className="bg-[#D5F2EB] rounded-3xl p-3.5 space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center text-teal-800">
+                    <Heart className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/60 text-teal-900">
+                    74%
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-[#18181B]">Wishlist Calculator</h3>
+                  <p className="text-[10px] text-slate-600 mt-0.5">Estimasi sisa & tempo</p>
+                </div>
+              </div>
+
+              {/* Card B: Daily Wins Log (Peach) */}
+              <div className="bg-[#FDEFD9] rounded-3xl p-3.5 space-y-2 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <span className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center text-amber-800">
+                    <Trophy className="w-3.5 h-3.5" />
+                  </span>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white/60 text-amber-900">
+                    3 Wins
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-[#18181B]">Daily Wins & Notes</h3>
+                  <p className="text-[10px] text-slate-600 mt-0.5">Refleksi micro-habits</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature Pills */}
+            <div className="flex items-center justify-around p-2.5 rounded-2xl bg-white/80 border border-slate-100 text-[11px] font-semibold text-slate-600 shadow-2xs">
+              <span className="flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>IndexedDB Lokal</span>
+              </span>
+              <span className="text-slate-300">•</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Sync Kalender</span>
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* ACTION BUTTONS */}
-        <div className="space-y-2.5">
-          {/* Google OAuth Button */}
+        {/* BOTTOM ACTION BUTTONS */}
+        <div className="space-y-2.5 pt-4 pb-2">
+          {/* 1. Tombol Lanjutkan dengan Google */}
           <button
             onClick={handleQuickGoogle}
             disabled={isGoogleLoading}
@@ -88,7 +186,7 @@ export default function WelcomeView({ onAuthSuccess }: WelcomeViewProps) {
             <span>Lanjutkan dengan Google</span>
           </button>
 
-          {/* Email Login & Register Buttons */}
+          {/* 2. Tombol Masuk Email & Daftar Baru */}
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => openAuth('login')}
@@ -103,16 +201,15 @@ export default function WelcomeView({ onAuthSuccess }: WelcomeViewProps) {
               className="py-3 rounded-2xl bg-white text-slate-700 border border-slate-200/80 text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-50 active:scale-[0.98] transition-all shadow-2xs"
             >
               <UserPlus className="w-3.5 h-3.5 stroke-[2]" />
-              <span>Daftar Akun</span>
+              <span>Daftar Baru</span>
             </button>
           </div>
-        </div>
 
-        {/* FOOTER */}
-        <div className="text-center pt-1 border-t border-slate-100/80">
-          <p className="text-[11px] text-slate-400 font-medium">
-            Personal Life OS • Offline-First PWA
-          </p>
+          <div className="text-center pt-1">
+            <p className="text-[10px] text-slate-400 font-medium">
+              Akses akun aman & sinkronisasi cloud real-time via Supabase
+            </p>
+          </div>
         </div>
 
       </div>
