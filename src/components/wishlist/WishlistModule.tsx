@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Sparkles,
@@ -8,26 +8,30 @@ import {
   Trash2,
   Coins,
   Calendar,
-  X,
-  TrendingUp,
   CheckCircle2,
   Clock
 } from 'lucide-react'
 import { db, type Wishlist } from '../../db'
 import { pushLocalData, deleteWishlistFromCloud } from '../../services/syncService'
+import AddWishlistModal from './AddWishlistModal'
 
-export default function WishlistModule() {
+interface WishlistModuleProps {
+  isExternalAddModalOpen?: boolean
+  onCloseExternalModal?: () => void
+}
+
+export default function WishlistModule({
+  isExternalAddModalOpen = false,
+  onCloseExternalModal,
+}: WishlistModuleProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'place' | 'item'>('all')
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [internalModalOpen, setInternalModalOpen] = useState(false)
+  const isModalOpen = internalModalOpen || isExternalAddModalOpen
 
-  // Form states for new wishlist
-  const [title, setTitle] = useState('')
-  const [type, setType] = useState<'place' | 'item'>('place')
-  const [targetCost, setTargetCost] = useState('')
-  const [currentSaved, setCurrentSaved] = useState('')
-  const [notes, setNotes] = useState('')
-  const [targetDate, setTargetDate] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const handleCloseModal = () => {
+    setInternalModalOpen(false)
+    onCloseExternalModal?.()
+  }
 
   // Live Query from Dexie
   const wishlists = useLiveQuery(() => db.wishlists.toArray(), []) || []
@@ -152,44 +156,6 @@ export default function WishlistModule() {
     deleteWishlistFromCloud(id).catch(() => {})
   }
 
-  // Handle Add Form Submit
-  const handleCreateWishlist = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim() || !targetCost) return
-
-    try {
-      setIsSubmitting(true)
-      const costNum = parseFloat(targetCost.replace(/[^0-9]/g, '')) || 0
-      const savedNum = parseFloat(currentSaved.replace(/[^0-9]/g, '')) || 0
-      const now = new Date().toISOString()
-
-      await db.wishlists.add({
-        title: title.trim(),
-        type,
-        targetCost: costNum,
-        currentSaved: Math.min(costNum, savedNum),
-        notes: notes.trim() || undefined,
-        targetDate: targetDate || undefined,
-        synced: 0,
-        createdAt: now,
-        updatedAt: now,
-      })
-      pushLocalData().catch(() => {})
-
-      // Reset
-      setTitle('')
-      setTargetCost('')
-      setCurrentSaved('')
-      setNotes('')
-      setTargetDate('')
-      setIsModalOpen(false)
-    } catch (err) {
-      console.error('Gagal menambahkan wishlist:', err)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   return (
     <div className="space-y-4 pt-1">
       {/* HERO SUMMARY CARD (Mint / Teal `#D5F2EB`) */}
@@ -268,7 +234,7 @@ export default function WishlistModule() {
 
         {/* Add Wishlist Button */}
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => setInternalModalOpen(true)}
           className="h-8 px-3 rounded-full bg-[#18181B] text-white text-xs font-bold flex items-center gap-1 hover:bg-slate-800 active:scale-95 transition-all shadow-xs"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -453,155 +419,10 @@ export default function WishlistModule() {
       </div>
 
       {/* CREATE WISHLIST MODAL */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="w-full max-w-[400px] max-h-[85vh] overflow-y-auto bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 relative space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-8 h-8 rounded-full bg-[#D5F2EB] flex items-center justify-center text-teal-800">
-                  <TrendingUp className="w-4 h-4 stroke-[2.2]" />
-                </span>
-                <h2 className="text-base font-extrabold text-[#18181B]">
-                  Tambah Target Wishlist
-                </h2>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                aria-label="Tutup"
-                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors"
-              >
-                <X className="w-4 h-4 stroke-[2.2]" />
-              </button>
-            </div>
-
-            {/* Modal Form */}
-            <form onSubmit={handleCreateWishlist} className="space-y-3.5">
-              {/* Type Switcher */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">Tipe Impian</label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100/80 rounded-2xl">
-                  <button
-                    type="button"
-                    onClick={() => setType('place')}
-                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      type === 'place'
-                        ? 'bg-[#D5F2EB] text-teal-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>Destinasi (Tempat)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setType('item')}
-                    className={`py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                      type === 'item'
-                        ? 'bg-[#FEDCDC] text-rose-900 shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900'
-                    }`}
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Barang Impian</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Title */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">
-                  Nama {type === 'place' ? 'Destinasi' : 'Barang'} *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    type === 'place' ? 'Contoh: Liburan ke Bali' : 'Contoh: iPhone 16 Pro'
-                  }
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
-                />
-              </div>
-
-              {/* Target Cost & Current Saved */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Target Biaya (Rp) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1000"
-                    placeholder="25000000"
-                    value={targetCost}
-                    onChange={(e) => setTargetCost(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-500">Terkumpul Awal (Rp)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="0"
-                    value={currentSaved}
-                    onChange={(e) => setCurrentSaved(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
-                  />
-                </div>
-              </div>
-
-              {/* Target Date */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">
-                  Target Tanggal Capaian (Opsional)
-                </label>
-                <input
-                  type="date"
-                  value={targetDate}
-                  onChange={(e) => setTargetDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all"
-                />
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">Catatan / Rincian</label>
-                <textarea
-                  rows={2}
-                  placeholder="Keterangan kebutuhan atau prioritas..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs font-medium text-slate-900 focus:outline-none focus:border-slate-900 focus:bg-white transition-all resize-none"
-                />
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-2xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 active:scale-98 transition-all"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !title.trim() || !targetCost}
-                  className="flex-1 py-2.5 rounded-2xl bg-[#18181B] text-white text-xs font-bold hover:bg-slate-800 disabled:opacity-50 active:scale-98 transition-all shadow-sm"
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Wishlist'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddWishlistModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+      />
     </div>
   )
 }

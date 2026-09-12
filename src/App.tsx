@@ -4,19 +4,20 @@ import BentoDashboard from './components/dashboard/BentoDashboard'
 import TodoModule from './components/todo/TodoModule'
 import WishlistModule from './components/wishlist/WishlistModule'
 import DailyNotesModule from './components/notes/DailyNotesModule'
-import ProfileModule from './components/profile/ProfileModule'
 import WelcomeView from './components/auth/WelcomeView'
+import TodoModal from './components/todo/TodoModal'
+import ProfileSetupModal from './components/auth/ProfileSetupModal'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/useAuth'
 import { initTodoNotificationChecker } from './utils/notifications'
 import { registerBackgroundSyncListeners, pullCloudData, runFullSync } from './services/syncService'
 import { supabase } from './lib/supabase'
 
-import ProfileSetupModal from './components/auth/ProfileSetupModal'
-
 function MainContent() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
   const [setupDismissed, setSetupDismissed] = useState(false)
+  const [isTodoModalOpen, setIsTodoModalOpen] = useState(false)
+  const [isWishlistModalOpen, setIsWishlistModalOpen] = useState(false)
   const { user, session, loading } = useAuth()
 
   // Status kelengkapan profil pengguna (Google OAuth atau pendaftaran baru)
@@ -68,6 +69,21 @@ function MainContent() {
     }
   }, [user?.id, user?.email])
 
+  // Logika Aksi Dinamis Tombol CTA Tengah (+)
+  const handleCenterCta = () => {
+    if (activeTab === 'dashboard' || activeTab === 'todo') {
+      setIsTodoModalOpen(true)
+    } else if (activeTab === 'wishlist') {
+      setIsWishlistModalOpen(true)
+    } else if (activeTab === 'notes') {
+      const input = document.getElementById('daily-win-input') as HTMLInputElement | null
+      if (input) {
+        input.focus()
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
+  }
+
   // Loading spinner minimal saat inisialisasi sesi awal Supabase
   if (loading) {
     return (
@@ -77,27 +93,35 @@ function MainContent() {
     )
   }
 
-  // =========================================================================
   // STRICT AUTHENTICATION GATE
-  // =========================================================================
-  // JIKA BELUM LOGIN (!session || !user):
-  // Aplikasi HANYA boleh menampilkan WelcomeView (Halaman Utama).
-  // Jangan render MobileShell, floating bottom nav bar, ataupun dashboard to-do.
   if (!session || !user) {
     return <WelcomeView />
   }
 
-  // JIKA SUDAH LOGIN (session valid):
-  // Langsung buka antarmuka aplikasi penuh (MobileShell)
   return (
     <>
-      <MobileShell activeTab={activeTab} onTabChange={setActiveTab}>
+      <MobileShell
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onCenterCtaClick={handleCenterCta}
+      >
         {activeTab === 'dashboard' && <BentoDashboard onNavigate={setActiveTab} />}
         {activeTab === 'todo' && <TodoModule />}
-        {activeTab === 'wishlist' && <WishlistModule />}
+        {activeTab === 'wishlist' && (
+          <WishlistModule
+            isExternalAddModalOpen={isWishlistModalOpen}
+            onCloseExternalModal={() => setIsWishlistModalOpen(false)}
+          />
+        )}
         {activeTab === 'notes' && <DailyNotesModule />}
-        {activeTab === 'account' && <ProfileModule />}
       </MobileShell>
+
+      {/* GLOBAL TODO MODAL DARI TOMBOL CTA TENGAH */}
+      <TodoModal
+        isOpen={isTodoModalOpen}
+        onClose={() => setIsTodoModalOpen(false)}
+        initialScope="daily"
+      />
 
       {/* MODAL SETUP PROFIL PERTAMA KALI (GOOGLE OAUTH / ONBOARDING) */}
       <ProfileSetupModal

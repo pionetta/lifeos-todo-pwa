@@ -283,11 +283,12 @@ export default function DailyNotesModule() {
         {/* Input Form for New Win */}
         <form onSubmit={handleAddWin} className="flex items-center gap-2">
           <input
+            id="daily-win-input"
             type="text"
             placeholder="Ketik pencapaian atau rasa syukur..."
             value={newWinText}
             onChange={(e) => setNewWinText(e.target.value)}
-            className="flex-1 px-3.5 py-2 rounded-2xl bg-white/85 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white border border-white transition-all"
+            className="flex-1 px-3.5 py-2.5 rounded-2xl bg-white text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 border border-white transition-all shadow-2xs"
           />
           <button
             type="submit"
